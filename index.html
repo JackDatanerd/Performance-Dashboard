@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Performance Dashboard - Interactive</title>
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/recharts/2.10.3/Recharts.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+    <div id="root"></div>
+    <script type="text/babel">
+        const { useState, useMemo } = React;
+        const { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } = Recharts;
+
+        const Upload = ({ className }) => (
+            <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
+        );
+
+        const PerformanceDashboard = () => {
+            const [data, setData] = useState([]);
+            const [emp, setEmp] = useState('All');
+            const [dept, setDept] = useState('All');
+            const [status, setStatus] = useState('All');
+            const [tab, setTab] = useState('overview');
+
+            const handleUpload = async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const text = await file.text();
+                const lines = text.split('\n').filter(l => l.trim());
+                const headers = lines[0].split(',').map(h => h.trim());
+                const parsed = lines.slice(1).map(line => {
+                    const vals = line.split(',').map(v => v.trim());
+                    const row = {};
+                    headers.forEach((h, i) => {
+                        row[h] = h === 'Hours' ? parseFloat(vals[i]) || 0 : h === 'Score' ? parseInt(vals[i]) || 0 : vals[i] || '';
+                    });
+                    return row;
+                });
+                setData(parsed);
+            };
+
+            const filtered = useMemo(() => data.filter(r => 
+                (emp === 'All' || r.Employee === emp) &&
+                (dept === 'All' || r.Department === dept) &&
+                (status === 'All' || r.Status === status)
+            ), [data, emp, dept, status]);
+
+            const kpis = useMemo(() => {
+                if (!filtered.length) return { avg: '0', hrs: '0', tasks: 0, best: { n: 'N/A', s: 0 }, worst: { n: 'N/A', s: 100 } };
+                const avg = filtered.reduce((s, r) => s + r.Score, 0) / filtered.length;
+                const hrs = filtered.reduce((s, r) => s + r.Hours, 0);
+                const empAvgs = {};
+                filtered.forEach(r => {
+                    if (!empAvgs[r.Employee]) empAvgs[r.Employee] = { sum: 0, cnt: 0 };
+                    empAvgs[r.Employee].sum += r.Score;
+                    empAvgs[r.Employee].cnt++;
+                });
+                let best = { n: 'N/A', s: 0 }, worst = { n: 'N/A', s: 100 };
+                Object.keys(empAvgs).forEach(e => {
+                    const a = empAvgs[e].sum / empAvgs[e].cnt;
+                    if (a > best.s) best = { n: e, s: a };
+                    if (a < worst.s) worst = { n: e, s: a };
+                });
+                return { avg: avg.toFixed(1), hrs: hrs.toFixed(1), tasks: filtered.length, best, worst };
+            }, [filtered]);
+
+            const statusChart = useMemo(() => {
+                const c = {};
+                filtered.forEach(r => c[r.Status] = (c[r.Status] || 0) + 1);
+                return Object.keys(c).map(s => ({ name: s, value: c[s], pct: ((c[s] / filtered.length) * 100).toFixed(1) }));
+            }, [filtered]);
+
+            const empData = useMemo(() => {
+                const e = {};
+                filtered.forEach(r => {
+                    if (!e[r.Employee]) e[r.Employee] = { scores: [], hrs: 0, tasks: 0, dept: r.Department };
+                    e[r.Employee].scores.push(r.Score);
+                    e[r.Employee].hrs += r.Hours;
+                    e[r.Employee].tasks++;
+                });
+                return Object.keys(e).map(emp => ({
+                    name: emp,
+                    dept: e[emp].dept,
+                    avg: parseFloat((e[emp].scores.reduce((a, b) => a + b) / e[emp].scores.length).toFixed(1)),
+                    hrs: parseFloat(e[emp].hrs.toFixed(1)),
+                    tasks: e[emp].tasks
+                })).sort((a, b) => b.avg - a.avg);
+            }, [filtered]);
+
+            const deptData = useMemo(() => {
+                const d = {};
+                filtered.forEach(r => {
+                    if (!d[r.Department]) d[r.Department] = { scores: [], hrs: 0 };
+                    d[r.Department].scores.push(r.Score);
+                    d[r.Department].hrs += r.Hours;
+                });
+                return Object.keys(d).map(dept => ({
+                    name: dept,
+                    avg: parseFloat((d[dept].scores.reduce((a, b) => a + b) / d[dept].scores.length).toFixed(1)),
+                    hrs: parseFloat(d[dept].hrs.toFixed(1))
+                })).sort((a, b) => b.avg - a.avg);
+            }, [filtered]);
+
+            const monthData = useMemo(() => {
+                const m = {};
+                filtered.forEach(r => {
+                    const d = new Date(r.Date);
+                    const k = d.toLocaleString('default', { month: 'short' }) + ' ' + d.getFullYear();
+                    if (!m[k]) m[k] = { scores: [], hrs: 0 };
+                    m[k].scores.push(r.Score);
+                    m[k].hrs += r.Hours;
+                });
+                return Object.keys(m).map(month => ({
+                    month,
+                    avg: parseFloat((m[month].scores.reduce((a, b) => a + b) / m[month].scores.length).toFixed(1)),
+                    hrs: parseFloat(m[month].hrs.toFixed(1))
+                }));
+            }, [filtered]);
+
+            const scatter = useMemo(() => empData.map(e => ({ name: e.name, hrs: e.hrs, score: e.avg })), [empData]);
+
+            const employees = useMemo(() => ['All', ...new Set(data.map(r => r.Employee))], [data]);
+            const departments = useMemo(() => ['All', ...new Set(data.map(r => r.Department))], [data]);
+            const statuses = useMemo(() => ['All', ...new Set(data.map(r => r.Status))], [data]);
+
+            const COLORS = { 'Exceeding': '#4CAF50', 'On Track': '#2196F3', 'Needs Improvement': '#F44336' };
+
+            if (!data.length) {
+                return (
+                    <div style={{ minHeight: '100vh', background: 'linear-gradient(to bottom right, #EFF6FF, #E0E7FF)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+                        <div style={{ background: 'white', borderRadius: '16px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', padding: '48px', maxWidth: '600px', width: '100%', textAlign: 'center' }}>
+                            <Upload className="w-20 h-20 mx-auto mb-6 text-blue-500" />
+                            <h1 style={{ fontSize: '36px', fontWeight: 'bold', color: '#1F2937', marginBottom: '16px' }}>📊 Performance Dashboard</h1>
+                            <p style={{ color: '#6B7280', marginBottom: '32px', fontSize: '18px' }}>Upload your CSV file to get started</p>
+                            <label style={{ cursor: 'pointer' }}>
+                                <div style={{ border: '4px dashed #93C5FD', borderRadius: '12px', padding: '48px', transition: 'all 0.3s' }}>
+                                    <Upload className="w-12 h-12 mx-auto mb-4 text-blue-400" />
+                                    <p style={{ fontSize: '18px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>Click to upload CSV</p>
+                                    <p style={{ fontSize: '14px', color: '#6B7280' }}>Date, Employee, Department, Task, Hours, Score, Status, Notes</p>
+                                </div>
+                                <input type="file" accept=".csv" onChange={handleUpload} style={{ display: 'none' }} />
+                            </label>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div style={{ minHeight: '100vh', background: '#F9FAFB' }}>
+                    <div style={{ background: 'linear-gradient(to right, #2563EB, #4F46E5)', color: 'white', padding: '24px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
+                        <div style={{ maxWidth: '1280px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div>
+                                <h1 style={{ fontSize: '36px', fontWeight: 'bold', marginBottom: '8px' }}>📊 Performance Overview Dashboard</h1>
+                                <p style={{ color: '#DBEAFE' }}>Last Updated: {new Date().toLocaleDateString()}</p>
+                            </div>
+                            <button onClick={() => setData([])} style={{ background: 'white', color: '#2563EB', padding: '12px 24px', borderRadius: '8px', fontWeight: '600', border: 'none', cursor: 'pointer' }}>Upload New</button>
+                        </div>
+                    </div>
+
+                    <div style={{ background: 'white', borderBottom: '1px solid #E5E7EB' }}>
+                        <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '0 24px', display: 'flex', gap: '32px' }}>
+                            {['overview', 'employee', 'department', 'trends'].map(t => (
+                                <button key={t} onClick={() => setTab(t)} style={{ padding: '16px 8px', fontWeight: '600', fontSize: '12px', textTransform: 'uppercase', borderBottom: tab === t ? '2px solid #2563EB' : '2px solid transparent', color: tab === t ? '#2563EB' : '#6B7280', background: 'none', border: 'none', cursor: 'pointer' }}>
+                                    {t === 'overview' ? 'OVERVIEW' : t === 'employee' ? 'EMPLOYEE DEEP DIVE' : t === 'department' ? 'DEPARTMENT ANALYSIS' : 'TRENDS & INSIGHTS'}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '24px' }}>
+                        <div style={{ background: 'white', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', padding: '16px', marginBottom: '24px', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>Employee</label>
+                                <select value={emp} onChange={(e) => setEmp(e.target.value)} style={{ width: '100%', border: '1px solid #D1D5DB', borderRadius: '6px', padding: '8px 12px' }}>
+                                    {employees.map(e => <option key={e}>{e}</option>)}
+                                </select>
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>Department</label>
+                                <select value={dept} onChange={(e) => setDept(e.target.value)} style={{ width: '100%', border: '1px solid #D1D5DB', borderRadius: '6px', padding: '8px 12px' }}>
+                                    {departments.map(d => <option key={d}>{d}</option>)}
+                                </select>
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>Status</label>
+                                <select value={status} onChange={(e) => setStatus(e.target.value)} style={{ width: '100%', border: '1px solid #D1D5DB', borderRadius: '6px', padding: '8px 12px' }}>
+                                    {statuses.map(s => <option key={s}>{s}</option>)}
+                                </select>
+                            </div>
+                        </div>
+
+                        {tab === 'overview' && (
+                            <>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '24px', marginBottom: '32px' }}>
+                                    {[
+                                        { title: 'Average Score', value: kpis.avg, color: '#2563EB' },
+                                        { title: 'Top Performer', value: kpis.best.n, sub: `Score: ${kpis.best.s.toFixed(1)}`, color: '#10B981' },
+                                        { title: 'Needs Support', value: kpis.worst.n, sub: `Score: ${kpis.worst.s.toFixed(1)}`, color: '#EF4444' },
+                                        { title: 'Total Hours', value: kpis.hrs, sub: `${kpis.tasks} Tasks`, color: '#8B5CF6' }
+                                    ].map((kpi, i) => (
+                                        <div key={i} style={{ background: 'white', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', padding: '24px' }}>
+                                            <p style={{ fontSize: '14px', fontWeight: '500', color: '#6B7280', marginBottom: '8px' }}>{kpi.title}</p>
+                                            <p style={{ fontSize: '30px', fontWeight: 'bold', color: '#1F2937', marginBottom: '4px' }}>{kpi.value}</p>
+                                            {kpi.sub && <p style={{ fontSize: '14px', color: '#6B7280' }}>{kpi.sub}</p>}
+                                        </div>
+                                    ))}
+                                </div>
+
+                                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px', marginBottom: '24px' }}>
+                                    <div style={{ background: 'white', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', padding: '24px' }}>
+                                        <h3 style={{ fontSize: '20px', fontWeight: 'bold', color: '#1F2937', marginBottom: '16px' }}>Performance Trend Over Time</h3>
+                                        <ResponsiveContainer width="100%" height={300}>
+                                            <LineChart data={monthData}>
+                                                <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                                                <XAxis dataKey="month" />
+                                                <YAxis yAxisId="left" />
+                                                <YAxis yAxisId="right" orientation="right" />
+                                                <Tooltip />
+                                                <Legend />
+                                                <Line yAxisId="left" type="monotone" dataKey="avg" stroke="#2563EB" strokeWidth={2} name="Avg Score" />
+                                                <Line yAxisId="right" type="monotone" dataKey="hrs" stroke="#F97316" strokeWidth={2} name="Hours" />
+                                            </LineChart>
+                                        </ResponsiveContainer>
+                                    </div>
+
+                                    <div style={{ background: 'white', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', padding: '24px' }}>
+                                        <h3 style={{ fontSize: '20px', fontWeight: 'bold', color: '#1F2937', marginBottom: '16px' }}>Status Distribution</h3>
+                                        <ResponsiveContainer width="100%" height={300}>
+                                            <PieChart>
+                                                <Pie data={statusChart} cx="50%" cy="50%" outerRadius={80} dataKey="value" label={(e) => `${e.name}: ${e.pct}%`}>
+                                                    {statusChart.map((entry, i) => <Cell key={i} fill={COLORS[entry.name] || '#999'} />)}
+                                                </Pie>
+                                                <Tooltip />
+                                            </PieChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                </div>
+
+                                <div style={{ background: 'white', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', padding: '24px' }}>
+                                    <h3 style={{ fontSize: '20px', fontWeight: 'bold', color: '#1F2937', marginBottom: '16px' }}>Employee Performance</h3>
+                                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                        <thead>
+                                            <tr style={{ borderBottom: '2px solid #E5E7EB' }}>
+                                                <th style={{ textAlign: 'left', padding: '12px 16px', fontWeight: '600', color: '#374151' }}>Employee</th>
+                                                <th style={{ textAlign: 'left', padding: '12px 16px', fontWeight: '600', color: '#374151' }}>Department</th>
+                                                <th style={{ textAlign: 'center', padding: '12px 16px', fontWeight: '600', color: '#374151' }}>Avg Score</th>
+                                                <th style={{ textAlign: 'center', padding: '12px 16px', fontWeight: '600', color: '#374151' }}>Hours</th>
+                                                <th style={{ textAlign: 'center', padding: '12px 16px', fontWeight: '600', color: '#374151' }}>Tasks</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {empData.map((e, i) => (
+                                                <tr key={i} style={{ borderBottom: '1px solid #F3F4F6' }}>
+                                                    <td style={{ padding: '12px 16px', fontWeight: '500' }}>{e.name}</td>
+                                                    <td style={{ padding: '12px 16px' }}>{e.dept}</td>
+                                                    <td style={{ textAlign: 'center', padding: '12px 16px' }}>
+                                                        <span style={{ padding: '4px 12px', borderRadius: '9999px', fontSize: '14px', fontWeight: '600', background: e.avg >= 90 ? '#D1FAE5' : e.avg >= 80 ? '#DBEAFE' : '#FEE2E2', color: e.avg >= 90 ? '#065F46' : e.avg >= 80 ? '#1E40AF' : '#991B1B' }}>{e.avg}</span>
+                                                    </td>
+                                                    <td style={{ textAlign: 'center', padding: '12px 16px' }}>{e.hrs}</td>
+                                                    <td style={{ textAlign: 'center', padding: '12px 16px' }}>{e.tasks}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </>
+                        )}
+
+                        {tab === 'department' && (
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+                                <div style={{ background: 'white', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', padding: '24px' }}>
+                                    <h3 style={{ fontSize: '20px', fontWeight: 'bold', color: '#1F2937', marginBottom: '16px' }}>Avg Score by Department</h3>
+                                    <ResponsiveContainer width="100%" height={300}>
+                                        <BarChart data={deptData} layout="vertical">
+                                            <CartesianGrid strokeDasharray="3 3" />
+                                            <XAxis type="number" domain={[0, 100]} />
+                                            <YAxis dataKey="name" type="category" />
+                                            <Tooltip />
+                                            <Bar dataKey="avg" fill="#10B981" />
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </div>
+                                <div style={{ background: 'white', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', padding: '24px' }}>
+                                    <h3 style={{ fontSize: '20px', fontWeight: 'bold', color: '#1F2937', marginBottom: '16px' }}>Total Hours by Department</h3>
+                                    <ResponsiveContainer width="100%" height={300}>
+                                        <BarChart data={deptData} layout="vertical">
+                                            <CartesianGrid strokeDasharray="3 3" />
+                                            <XAxis type="number" />
+                                            <YAxis dataKey="name" type="category" />
+                                            <Tooltip />
+                                            <Bar dataKey="hrs" fill="#F97316" />
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            </div>
+                        )}
+
+                        {tab === 'trends' && (
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+                                <div style={{ background: 'white', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', padding: '24px' }}>
+                                    <h3 style={{ fontSize: '20px', fontWeight: 'bold', color: '#1F2937', marginBottom: '16px' }}>Monthly Trend</h3>
+                                    <ResponsiveContainer width="100%" height={300}>
+                                        <LineChart data={monthData}>
+                                            <CartesianGrid strokeDasharray="3 3" />
+                                            <XAxis dataKey="month" />
+                                            <YAxis />
+                                            <Tooltip />
+                                            <Line type="monotone" dataKey="avg" stroke="#2563EB" strokeWidth={2} />
+                                        </LineChart>
+                                    </ResponsiveContainer>
+                                </div>
+                                <div style={{ background: 'white', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', padding: '24px' }}>
+                                    <h3 style={{ fontSize: '20px', fontWeight: 'bold', color: '#1F2937', marginBottom: '16px' }}>Hours vs Score</h3>
+                                    <ResponsiveContainer width="100%" height={300}>
+                                        <ScatterChart>
+                                            <CartesianGrid strokeDasharray="3 3" />
+                                            <XAxis dataKey="hrs" name="Hours" />
+                                            <YAxis dataKey="score" name="Score" domain={[70, 100]} />
+                                            <Tooltip cursor={{ strokeDasharray: '3 3' }} />
+                                            <Scatter data={scatter} fill="#8B5CF6" />
+                                        </ScatterChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        ReactDOM.render(<PerformanceDashboard />, document.getElementById('root'));
+    </script>
+</body>
+</html>
