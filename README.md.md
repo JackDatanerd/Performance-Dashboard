@@ -1,6 +1,6 @@
 # 📊 Performance Dashboard
 
-An interactive, professional-grade performance analytics dashboard built with **Power BI** and **React**. Track employee performance, analyze departmental trends, and gain actionable insights through dynamic visualizations.
+An interactive, professional-grade performance analytics dashboard built with **Exel, Power BI** and **React**. Track employee performance, analyze departmental trends, and gain actionable insights through dynamic visualizations.
 
 ![Dashboard Preview](screenshots/dashboard-overview.png)
 
@@ -59,16 +59,16 @@ An interactive, professional-grade performance analytics dashboard built with **
 ```
 Performance-Dashboard/
 ├── data/
-│   └── performance_data.csv          # Sample dataset
+│   └── performance_data.csv         
 ├── screenshots/
 │   ├── dashboard-overview.png
 │   ├── employee-deep-dive.png
 │   ├── department-analysis.png
 │   └── trends-insights.png
-├── Performance-Dashboard.pbix         # Power BI file
-├── Performance-Dashboard.pdf          # Exported PDF for quick preview
-├── index.html                         # Standalone interactive HTML dashboard
-└── README.md                          # This file
+├── Performance-Dashboard.pbix        
+├── Performance-Dashboard.pdf         
+├── index.html                        
+└── README.md                        
 ```
 
 ---
@@ -165,13 +165,13 @@ RETURN
 ![Overview](screenshots/dashboard-overview.png)
 
 ### Employee Deep Dive
-![Employee Deep Dive](screenshots/employee-deep-dive.png)
+![Employee Deep Dive](screenshots/employee_deep_dive.png)
 
 ### Department Analysis
-![Department Analysis](screenshots/department-analysis.png)
+![Department Analysis](screenshots/department_analysis.png)
 
 ### Trends & Insights
-![Trends](screenshots/trends-insights.png)
+![Trends](screenshots/trends_and_insights.png)
 
 ---
 
