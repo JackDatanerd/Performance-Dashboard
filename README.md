@@ -165,13 +165,13 @@ RETURN
 ![Overview](screenshots/dashboard-overview.png)
 
 ### Employee Deep Dive
-![Employee Deep Dive](screenshots/employee-deep-dive.png)
+![Employee Deep Dive](screenshots/employee_deep_dive.png)
 
 ### Department Analysis
-![Department Analysis](screenshots/department-analysis.png)
+![Department Analysis](screenshots/department_analysis.png)
 
 ### Trends & Insights
-![Trends](screenshots/trends-insights.png)
+![Trends](screenshots/trends_and_insights.png)
 
 ---
 
