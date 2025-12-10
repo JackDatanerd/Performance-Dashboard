@@ -8,7 +8,7 @@ An interactive, professional-grade performance analytics dashboard built with **
 
 ## 🚀 **Live Demo**
 
-- **Interactive HTML Version**: [View Live Demo](https://github.com/JackDatanerd/Performance-Dashboard/)
+- **Interactive Live Web Version**: [View Live Demo](https://performance-dashboard-app.vercel.app/)
 - **Power BI File**: Download `Performance-Dashboard.pbix` to explore in Power BI Desktop
 
 ---
@@ -82,19 +82,14 @@ Performance-Dashboard/
 3. **Interact** with slicers, filters, and drill-throughs
 4. **Customize** with your own data by replacing the data source
 
-### **Option 2: Interactive HTML Dashboard**
+### **Option 2: Interactive Web Dashboard**
 
-1. **Download** `index.html`
-2. **Open** in any modern browser (Chrome, Firefox, Safari, Edge)
-3. **Upload your CSV** file with the required format:
+1. **Visit** [Performance Dashboard](https://performance-dashboard-app.vercel.app/)
+2. **Upload your CSV** file with the required format:
    ```
    Date, Employee, Department, Task, Hours, Score, Status, Notes
    ```
-4. **Explore** the interactive dashboard with real-time filtering
-
-### **Option 3: GitHub Pages (Live Demo)**
-
-Visit the live demo at: `https://github.com/JackDatanerd/Performance-Dashboard/`
+3. **Explore** the interactive dashboard with real-time filtering
 
 ---
 
@@ -185,14 +180,14 @@ RETURN
 3. Replace the data source with your CSV file
 4. **Close & Apply**
 
-**HTML Version:**
+**Web Version:**
 - Simply upload your CSV file through the interface
 - The dashboard will automatically parse and visualize your data
 
 ### **Modifying Visuals**
 
 - **Power BI**: Edit visuals directly in Power BI Desktop
-- **HTML**: Modify the React components in `index.html` (search for `// CUSTOMIZATION`)
+- **Web Dashboard**: Modify the React components in `performance-dashboard-app/` (search for `// CUSTOMIZATION`)
 
 ---
 
@@ -217,7 +212,7 @@ This project is open source and available under the [MIT License](LICENSE).
 ## 👤 **Author**
 
 **Jack Ongogo**
-- GitHub: [@JackDatanerd](https://github.com/JackDatanerd/Performance-Dashboard)
+- GitHub: [@JackDatanerd](https://github.com/JackDatanerd/)
 - LinkedIn: [Jack Ongogo](https://www.linkedin.com/in/jack-ongogo-735015132/)
 - Portfolio: [Website](https://jackdatanerd.github.io/jack-ongogo-website/)
 
